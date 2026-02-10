@@ -50,6 +50,25 @@ npm run build
 npm start
 ```
 
+Static export output is in `out/` (used for GitHub Pages).
+
+## Deploy to GitHub Pages
+
+The repo includes a GitHub Action that builds and deploys to GitHub Pages on push to `main` or `master`.
+
+1. **Enable GitHub Pages**
+   - In your repo: **Settings → Pages**
+   - Under **Build and deployment**, set **Source** to **GitHub Actions**
+
+2. **Push to trigger deploy**
+   - Push to `main` (or `master`). The workflow **Deploy to GitHub Pages** will run.
+   - After it finishes, the site is at `https://<username>.github.io/<repo-name>/`
+
+3. **Optional: custom domain**  
+   - In **Settings → Pages** you can set a custom domain.
+
+**Note:** The visitor count in the footer does not run on GitHub Pages (no server); the rest of the app works as a static site.
+
 ## Notes
 
 - **ATS**: Templates use simple structure, safe fonts, and clear headings. No graphics/tables in ATS-oriented layouts.

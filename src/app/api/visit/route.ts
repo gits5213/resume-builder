@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
 
+export const runtime = "nodejs";
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const VISITS_FILE = path.join(DATA_DIR, "visits.json");
 
@@ -29,12 +31,20 @@ function setCount(count: number): void {
 }
 
 export async function GET() {
-  const count = getCount();
-  return NextResponse.json({ count });
+  try {
+    const count = getCount();
+    return NextResponse.json({ count });
+  } catch {
+    return NextResponse.json({ count: 0 });
+  }
 }
 
 export async function POST() {
-  const count = getCount() + 1;
-  setCount(count);
-  return NextResponse.json({ count });
+  try {
+    const count = getCount() + 1;
+    setCount(count);
+    return NextResponse.json({ count });
+  } catch {
+    return NextResponse.json({ count: 0 });
+  }
 }
