@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
 
 export const runtime = "nodejs";
+export const dynamic = "force-static";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const VISITS_FILE = path.join(DATA_DIR, "visits.json");
