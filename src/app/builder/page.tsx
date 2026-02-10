@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useResumeStore } from "@/store/resumeStore";
@@ -32,6 +32,7 @@ const STEPS = [
 
 function BuilderContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const showUpload = searchParams.get("upload") === "1";
   const [step, setStep] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -197,7 +198,11 @@ function BuilderContent() {
           <form
             onSubmit={form.handleSubmit((values) => {
               updateStore(values);
-              if (step < STEPS.length - 1) setStep(step + 1);
+              if (step < STEPS.length - 1) {
+                setStep(step + 1);
+              } else {
+                router.push("/templates");
+              }
             })}
             className="space-y-6"
           >

@@ -5,11 +5,13 @@ import type { Resume } from "@/lib/resumeSchema";
 import { CorporateTemplate } from "./CorporateTemplate";
 import { FederalTemplate } from "./FederalTemplate";
 import { CityStateTemplate } from "./CityStateTemplate";
+import { BiodataTemplate } from "./BiodataTemplate";
 
 const TEMPLATES: Record<TemplateId, React.ComponentType<{ resume: Resume; className?: string }>> = {
   corporate: CorporateTemplate,
   federal: FederalTemplate,
   "city-state": CityStateTemplate,
+  biodata: BiodataTemplate,
 };
 
 export interface ResumePreviewProps {
@@ -24,4 +26,4 @@ export function ResumePreview({ resume, templateId, className }: ResumePreviewPr
   return <Template resume={resume} className={className} />;
 }
 
-export { CorporateTemplate, FederalTemplate, CityStateTemplate };
+export { CorporateTemplate, FederalTemplate, CityStateTemplate, BiodataTemplate };

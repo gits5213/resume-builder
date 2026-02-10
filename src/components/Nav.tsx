@@ -2,46 +2,60 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Layout, Eye, Download } from "lucide-react";
+import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useResumeStore } from "@/store/resumeStore";
+import { TEMPLATE_LABELS, type TemplateId } from "@/lib/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const links = [
-  { href: "/", label: "Home" },
-  { href: "/builder", label: "Builder", icon: FileText },
-  { href: "/templates", label: "Templates", icon: Layout },
-  { href: "/export", label: "Export", icon: Download },
-];
+const templateIds: TemplateId[] = ["city-state", "federal", "corporate", "biodata"];
 
 export function Nav() {
   const pathname = usePathname();
+  const { selectedTemplate, setSelectedTemplate } = useResumeStore();
+  const isHome = pathname === "/";
 
   return (
-    <nav className="no-print border-b border-border bg-card/50 sticky top-0 z-10">
-      <div className="container mx-auto px-4 max-w-6xl">
-        <div className="flex items-center gap-6 h-12">
-          <Link href="/" className="font-semibold text-primary flex items-center gap-2">
+    <header className="no-print sticky top-0 z-50 w-full border-b border-border bg-white/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      <div className="container mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <Link
+          href="/"
+          className={cn(
+            "flex shrink-0 items-center gap-2 font-semibold tracking-tight",
+            isHome ? "text-primary" : "text-foreground hover:text-primary transition-colors"
+          )}
+        >
+          <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <FileText className="size-5" />
-            Resume Builder
-          </Link>
-          <div className="flex gap-1">
-            {links.slice(1).map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                  pathname === href || pathname.startsWith(href + "/")
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-              >
-                {Icon ? <Icon className="size-4" /> : null}
-                {label}
-              </Link>
-            ))}
-          </div>
+          </span>
+          <span className="hidden sm:inline">Resume Builder</span>
+        </Link>
+
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground hidden sm:inline">Template</span>
+          <Select
+            value={selectedTemplate}
+            onValueChange={(v) => setSelectedTemplate(v as TemplateId)}
+          >
+            <SelectTrigger className="h-9 w-[180px] rounded-lg border-border bg-muted/50">
+              <SelectValue placeholder="Choose template" />
+            </SelectTrigger>
+            <SelectContent>
+              {templateIds.map((id) => (
+                <SelectItem key={id} value={id}>
+                  {TEMPLATE_LABELS[id]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }

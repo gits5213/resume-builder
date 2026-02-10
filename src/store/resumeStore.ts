@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { Resume } from "@/lib/resumeSchema";
 import * as db from "@/lib/db";
 
-export type TemplateId = "city-state" | "federal" | "corporate";
+export type TemplateId = "city-state" | "federal" | "corporate" | "biodata";
 
 type ResumeState = {
   resume: Resume;

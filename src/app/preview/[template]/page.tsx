@@ -7,7 +7,7 @@ import type { TemplateId } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-const VALID_TEMPLATES: TemplateId[] = ["city-state", "federal", "corporate"];
+const VALID_TEMPLATES: TemplateId[] = ["city-state", "federal", "corporate", "biodata"];
 
 function isValidTemplate(t: string): t is TemplateId {
   return VALID_TEMPLATES.includes(t as TemplateId);

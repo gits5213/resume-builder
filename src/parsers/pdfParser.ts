@@ -1,4 +1,5 @@
 import type { Resume } from "@/lib/resumeSchema";
+import { mapTextToResume } from "./mapTextToResume";
 
 export interface PdfParseResult {
   success: boolean;
@@ -8,15 +9,22 @@ export interface PdfParseResult {
 }
 
 /**
- * PDF parsing is limited in the browser without a backend.
- * We use pdfjs-dist to extract text only; mapping to resume fields is heuristic.
- * For best results, recommend users upload DOCX or use manual entry.
+ * Extract text from PDF and map to resume fields using shared parser.
+ * Uses same section detection as DOCX: contact, summary, experience, education, skills, certifications, etc.
  */
 export async function parsePdf(file: File): Promise<PdfParseResult> {
   const errors: string[] = [];
 
   try {
-    const pdfjsLib = await import("pdfjs-dist");
+    const pdfjsLib: any = await import("pdfjs-dist/build/pdf");
+
+    if (typeof window !== "undefined" && "Worker" in window) {
+      const currentWorkerSrc = pdfjsLib.GlobalWorkerOptions?.workerSrc;
+      if (!currentWorkerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+      }
+    }
+
     const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
     const numPages = pdf.numPages;
     const textParts: string[] = [];
@@ -24,13 +32,17 @@ export async function parsePdf(file: File): Promise<PdfParseResult> {
     for (let i = 1; i <= numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
-      const text = content.items
-        .map((item) => ("str" in item ? String((item as { str?: string }).str ?? "") : ""))
-        .join(" ");
-      textParts.push(text);
+      const items = content.items as Array<{ str?: string; hasEOL?: boolean }>;
+      const line: string[] = [];
+      for (const item of items) {
+        const str = "str" in item ? String(item.str ?? "") : "";
+        line.push(str);
+        if (item.hasEOL) line.push("\n");
+      }
+      textParts.push(line.join("").replace(/\s+\n\s+/g, "\n").trim());
     }
 
-    const rawText = textParts.join("\n\n").replace(/\s+/g, " ").trim();
+    const rawText = textParts.join("\n\n");
     const resume = mapTextToResume(rawText, errors);
 
     return {
@@ -47,48 +59,4 @@ export async function parsePdf(file: File): Promise<PdfParseResult> {
       errors: [message],
     };
   }
-}
-
-const EMAIL_REGEX = /[\w.-]+@[\w.-]+\.\w+/;
-const PHONE_REGEX = /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/;
-
-function mapTextToResume(text: string, _errors: string[]): Partial<Resume> {
-  const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
-  const resume: Partial<Resume> = {
-    fullName: "",
-    email: "",
-    phone: "",
-    summary: "",
-    experience: [],
-    education: [],
-    skills: [],
-    certifications: [],
-    projects: [],
-    ksas: [],
-    languages: [],
-    volunteer: [],
-    awards: [],
-  };
-
-  const emailMatch = text.match(EMAIL_REGEX);
-  if (emailMatch) resume.email = emailMatch[0];
-
-  const phoneMatch = text.match(PHONE_REGEX);
-  if (phoneMatch) resume.phone = phoneMatch[0];
-
-  if (lines.length > 0 && !resume.fullName) {
-    const first = lines[0];
-    if (first.length < 80 && !first.includes("@")) resume.fullName = first;
-  }
-
-  const skillKeywords = [
-    "JavaScript", "TypeScript", "React", "Node.js", "Python", "Java", "SQL",
-    "HTML", "CSS", "AWS", "Git", "REST", "API", "Agile", "Leadership",
-  ];
-  const found = skillKeywords.filter((s) =>
-    new RegExp(`\\b${s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text)
-  );
-  if (found.length) resume.skills = [...new Set(found)];
-
-  return resume;
 }
