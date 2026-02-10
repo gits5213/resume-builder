@@ -1,0 +1,62 @@
+/* Resume print styles – ATS-safe: no complex layout, clear headings */
+
+@media print {
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .no-print,
+  nav,
+  header:not(.resume-template header),
+  .resume-actions,
+  button,
+  [role="navigation"] {
+    display: none !important;
+  }
+
+  .resume-print-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0.5in !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .resume-template {
+    font-size: 11pt;
+    line-height: 1.35;
+    color: black !important;
+  }
+
+  .resume-template a {
+    color: black !important;
+    text-decoration: none !important;
+  }
+
+  .resume-template h1,
+  .resume-template h2 {
+    color: black !important;
+    page-break-after: avoid;
+  }
+
+  .resume-template section {
+    page-break-inside: avoid;
+  }
+
+  .resume-template ul {
+    list-style-type: disc;
+  }
+
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+
+  @page :first {
+    margin-top: 0.5in;
+  }
+}
