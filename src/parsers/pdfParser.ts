@@ -16,7 +16,7 @@ export async function parsePdf(file: File): Promise<PdfParseResult> {
   const errors: string[] = [];
 
   try {
-    const pdfjsLib: any = await import("pdfjs-dist/build/pdf");
+    const pdfjsLib = await import("pdfjs-dist");
 
     if (typeof window !== "undefined" && "Worker" in window) {
       const currentWorkerSrc = pdfjsLib.GlobalWorkerOptions?.workerSrc;
