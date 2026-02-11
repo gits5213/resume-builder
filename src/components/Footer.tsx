@@ -3,14 +3,59 @@
 import { useEffect, useState } from "react";
 import { Eye } from "lucide-react";
 
+const COUNTAPI_NAMESPACE = "gitsics-resume-builder";
+const COUNTAPI_KEY = "visitors";
+const COUNTAPI_BASE = "https://api.countapi.xyz";
+const STORAGE_KEY = "resume-builder-visit-count";
+const SESSION_HIT_KEY = "resume-builder-visit-hit";
+
+function getCachedCount(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const cached = localStorage.getItem(STORAGE_KEY);
+    if (cached === null) return null;
+    const n = parseInt(cached, 10);
+    return Number.isNaN(n) ? null : n;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedCount(count: number): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, String(count));
+  } catch {
+    // ignore
+  }
+}
+
 export function Footer() {
-  const [visitCount, setVisitCount] = useState<number | null>(null);
+  const [visitCount, setVisitCount] = useState<number | null>(() =>
+    getCachedCount()
+  );
 
   useEffect(() => {
-    fetch("/api/visit", { method: "POST" })
+    const alreadyHit = typeof sessionStorage !== "undefined" && sessionStorage.getItem(SESSION_HIT_KEY) === "1";
+    const url = alreadyHit
+      ? `${COUNTAPI_BASE}/get/${COUNTAPI_NAMESPACE}/${COUNTAPI_KEY}`
+      : `${COUNTAPI_BASE}/hit/${COUNTAPI_NAMESPACE}/${COUNTAPI_KEY}`;
+
+    fetch(url)
       .then((res) => res.json())
-      .then((data) => setVisitCount(data.count))
-      .catch(() => setVisitCount(null));
+      .then((data) => {
+        const value = typeof data.value === "number" ? data.value : null;
+        if (value !== null) {
+          setVisitCount(value);
+          setCachedCount(value);
+        }
+        if (!alreadyHit && typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem(SESSION_HIT_KEY, "1");
+        }
+      })
+      .catch(() => {
+        // Keep showing cached count if API fails
+        setVisitCount((prev) => prev ?? getCachedCount());
+      });
   }, []);
 
   return (
