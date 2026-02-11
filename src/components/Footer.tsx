@@ -36,25 +36,42 @@ export function Footer() {
 
   useEffect(() => {
     const alreadyHit = typeof sessionStorage !== "undefined" && sessionStorage.getItem(SESSION_HIT_KEY) === "1";
-    const url = alreadyHit
+    const countApiUrl = alreadyHit
       ? `${COUNTAPI_BASE}/get/${COUNTAPI_NAMESPACE}/${COUNTAPI_KEY}`
       : `${COUNTAPI_BASE}/hit/${COUNTAPI_NAMESPACE}/${COUNTAPI_KEY}`;
 
-    fetch(url)
+    function applyCount(value: number | null) {
+      if (value !== null) {
+        setVisitCount(value);
+        setCachedCount(value);
+      }
+      if (!alreadyHit && typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(SESSION_HIT_KEY, "1");
+      }
+    }
+
+    // Prefer CountAPI (works in production / static deploy). Fallback to local API when running dev.
+    fetch(countApiUrl)
       .then((res) => res.json())
       .then((data) => {
         const value = typeof data.value === "number" ? data.value : null;
         if (value !== null) {
-          setVisitCount(value);
-          setCachedCount(value);
+          applyCount(value);
+          return;
         }
-        if (!alreadyHit && typeof sessionStorage !== "undefined") {
-          sessionStorage.setItem(SESSION_HIT_KEY, "1");
-        }
+        throw new Error("No value");
       })
       .catch(() => {
-        // Keep showing cached count if API fails
-        setVisitCount((prev) => prev ?? getCachedCount());
+        // Fallback: local /api/visit (available when running next dev)
+        fetch("/api/visit", { method: alreadyHit ? "GET" : "POST" })
+          .then((res) => res.ok ? res.json() : Promise.reject(new Error("Not ok")))
+          .then((data) => {
+            const count = typeof data?.count === "number" ? data.count : null;
+            if (count !== null) applyCount(count);
+          })
+          .catch(() => {
+            setVisitCount((prev) => prev ?? getCachedCount());
+          });
       });
   }, []);
 
