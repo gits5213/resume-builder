@@ -6,6 +6,7 @@ import { Eye } from "lucide-react";
 const COUNTAPI_NAMESPACE = "gitsics-resume-builder";
 const COUNTAPI_KEY = "visitors";
 const COUNTAPI_BASE = "https://api.countapi.xyz";
+const CORS_PROXY = "https://api.allorigins.win/raw?url=";
 const STORAGE_KEY = "resume-builder-visit-count";
 const SESSION_HIT_KEY = "resume-builder-visit-hit";
 
@@ -50,27 +51,43 @@ export function Footer() {
       }
     }
 
-    // Prefer CountAPI (works in production / static deploy). Fallback to local API when running dev.
-    fetch(countApiUrl)
-      .then((res) => res.json())
-      .then((data) => {
-        const value = typeof data.value === "number" ? data.value : null;
-        if (value !== null) {
-          applyCount(value);
-          return;
-        }
-        throw new Error("No value");
-      })
+    function parseCountApiResponse(data: { value?: number }): number | null {
+      return typeof data?.value === "number" ? data.value : null;
+    }
+
+    function tryCountApi(url: string, isProxy = false): Promise<number | null> {
+      return fetch(url)
+        .then((res) => (isProxy ? res.text() : res.json()))
+        .then((body) => {
+          let data: { value?: number };
+          try {
+            data = typeof body === "string" ? JSON.parse(body) : body;
+          } catch {
+            return Promise.reject(new Error("Invalid JSON"));
+          }
+          return parseCountApiResponse(data);
+        })
+        .then((value) => (value !== null ? value : Promise.reject(new Error("No value"))));
+    }
+
+    // 1) Try CountAPI directly (works when CORS allows e.g. localhost)
+    tryCountApi(countApiUrl)
+      .then((value) => applyCount(value))
       .catch(() => {
-        // Fallback: local /api/visit (available when running next dev)
-        fetch("/api/visit", { method: alreadyHit ? "GET" : "POST" })
-          .then((res) => res.ok ? res.json() : Promise.reject(new Error("Not ok")))
-          .then((data) => {
-            const count = typeof data?.count === "number" ? data.count : null;
-            if (count !== null) applyCount(count);
-          })
+        // 2) Try via CORS proxy (for production e.g. GitHub Pages where direct request may be blocked)
+        tryCountApi(CORS_PROXY + encodeURIComponent(countApiUrl), true)
+          .then((value) => applyCount(value))
           .catch(() => {
-            setVisitCount((prev) => prev ?? getCachedCount());
+            // 3) Fallback: local /api/visit (only available when running next dev)
+            fetch("/api/visit", { method: alreadyHit ? "GET" : "POST" })
+              .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Not ok"))))
+              .then((data) => {
+                const count = typeof data?.count === "number" ? data.count : null;
+                if (count !== null) applyCount(count);
+              })
+              .catch(() => {
+                setVisitCount((prev) => prev ?? getCachedCount());
+              });
           });
       });
   }, []);
