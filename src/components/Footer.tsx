@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { Eye } from "lucide-react";
 
-const COUNTAPI_NAMESPACE = "gitsics-resume-builder";
-const COUNTAPI_KEY = "visitors";
-const COUNTAPI_BASE = "https://api.countapi.xyz";
-const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+// Production: direct URL (browser talks to CountAPI from your live site, e.g. GitHub Pages).
+// Dev: same API via Next.js proxy to avoid CORS/DNS issues.
+const COUNTAPI_BASE = "https://countapi.mileshilliard.com/api/v1";
+const COUNTAPI_KEY = "resume-builder-visits";
 const STORAGE_KEY = "resume-builder-visit-count";
 const SESSION_HIT_KEY = "resume-builder-visit-hit";
 
@@ -30,16 +30,39 @@ function setCachedCount(count: number): void {
   }
 }
 
+function getCountApiUrl(alreadyHit: boolean): string {
+  const action = alreadyHit ? "get" : "hit";
+  const isDev =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1");
+  if (isDev) {
+    return `/api/countapi/${action}/${COUNTAPI_KEY}`;
+  }
+  return `${COUNTAPI_BASE}/${action}/${COUNTAPI_KEY}`;
+}
+
+/** Parse CountAPI response; mileshilliard returns value as string or number. */
+function parseCountApiResponse(data: { value?: number | string }): number | null {
+  const v = data?.value;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const n = parseInt(v, 10);
+    return Number.isNaN(n) ? null : n;
+  }
+  return null;
+}
+
 export function Footer() {
-  const [visitCount, setVisitCount] = useState<number | null>(() =>
-    getCachedCount()
-  );
+  // Always start as null so server and client first render match (avoids hydration error).
+  // Cached count is applied in useEffect after mount.
+  const [visitCount, setVisitCount] = useState<number | null>(null);
 
   useEffect(() => {
-    const alreadyHit = typeof sessionStorage !== "undefined" && sessionStorage.getItem(SESSION_HIT_KEY) === "1";
-    const countApiUrl = alreadyHit
-      ? `${COUNTAPI_BASE}/get/${COUNTAPI_NAMESPACE}/${COUNTAPI_KEY}`
-      : `${COUNTAPI_BASE}/hit/${COUNTAPI_NAMESPACE}/${COUNTAPI_KEY}`;
+    const alreadyHit =
+      typeof sessionStorage !== "undefined" &&
+      sessionStorage.getItem(SESSION_HIT_KEY) === "1";
+    const url = getCountApiUrl(alreadyHit);
 
     function applyCount(value: number | null) {
       if (value !== null) {
@@ -51,44 +74,18 @@ export function Footer() {
       }
     }
 
-    function parseCountApiResponse(data: { value?: number }): number | null {
-      return typeof data?.value === "number" ? data.value : null;
-    }
+    // Show cached count immediately while we revalidate (client-only, no hydration issue).
+    const cached = getCachedCount();
+    if (cached !== null) setVisitCount(cached);
 
-    function tryCountApi(url: string, isProxy = false): Promise<number | null> {
-      return fetch(url)
-        .then((res) => (isProxy ? res.text() : res.json()))
-        .then((body) => {
-          let data: { value?: number };
-          try {
-            data = typeof body === "string" ? JSON.parse(body) : body;
-          } catch {
-            return Promise.reject(new Error("Invalid JSON"));
-          }
-          return parseCountApiResponse(data);
-        })
-        .then((value) => (value !== null ? value : Promise.reject(new Error("No value"))));
-    }
-
-    // 1) Try CountAPI directly (works when CORS allows e.g. localhost)
-    tryCountApi(countApiUrl)
-      .then((value) => applyCount(value))
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Not ok"))))
+      .then((data) => {
+        const value = parseCountApiResponse(data);
+        if (value !== null) applyCount(value);
+      })
       .catch(() => {
-        // 2) Try via CORS proxy (for production e.g. GitHub Pages where direct request may be blocked)
-        tryCountApi(CORS_PROXY + encodeURIComponent(countApiUrl), true)
-          .then((value) => applyCount(value))
-          .catch(() => {
-            // 3) Fallback: local /api/visit (only available when running next dev)
-            fetch("/api/visit", { method: alreadyHit ? "GET" : "POST" })
-              .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Not ok"))))
-              .then((data) => {
-                const count = typeof data?.count === "number" ? data.count : null;
-                if (count !== null) applyCount(count);
-              })
-              .catch(() => {
-                setVisitCount((prev) => prev ?? getCachedCount());
-              });
-          });
+        setVisitCount((prev) => prev ?? getCachedCount());
       });
   }, []);
 
