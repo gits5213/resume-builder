@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-static";
+
 const COUNTAPI_BASE = "https://countapi.mileshilliard.com/api/v1";
+const COUNTAPI_KEY = "resume-builder-visits";
+
+/** Required for static export build; this route is only used in dev (no server in production). */
+export function generateStaticParams() {
+  return [
+    { path: ["hit", COUNTAPI_KEY] },
+    { path: ["get", COUNTAPI_KEY] },
+  ];
+}
 
 /**
  * Proxy to CountAPI in development so the same API is called via the dev server
